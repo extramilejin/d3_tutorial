@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!-- html attr lang 속성 -->
+<html lang="ko"> 
+    <!-- head 태그: 타이틀, css링크, 파비콘, 메타데이터(charset:해당 문서의 인코딩 특정) -->
+<head>
+    <!-- meta charset 왜 charset에서는 닫는 태그 / 가 없을까  -->
+    <!-- meta 태그는 대부분 name, content가 짝으로 이뤄져있는데 name은 메타요소가 어떠한 정보의 형태를 가지고있는지를 나타내고 -->
+    <!-- content는 실제 메타데이터의 정보를 담고 있다.  -->
+    <meta charset="utf-8"> 
+    <!-- viewport에 대한 메타데이터 width와 initial-scale에 대한 정보를 담는다. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <!-- <meta> 태그의 http-equiv 속성은 content 속성에 명시된 값에 대한 HTTP 헤더를 제공합니다. -->
+    <!-- 마이크로소프트에서 만든 익스플로러 브라우저는 호환성 보기 모드가 존재하는데 이는 
+        사용자가 지원하는 브라우저에 따라 오래된 브라우저에서 정상적으로 출력되지 않는 이슈가 발생할 수 있다. -->
+    <!-- 더 간편한 방법으로 아래처럼 사용하는 경우 모든 IE 브라우저에 호환성보기를 무시해줍니다. -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <!-- meta name="GENERATOR"는 웹사이트를 제작할 때 어떤 프로그램을 사용했는지 명시해주는 것이다. -->
+    <meta name="GENERATOR" content="doc-viewer"/>
+    <title>doc-viewer</title> 
+    <!-- <link href="css/mobile.6118bab.css" rel="stylesheet">
+    <link href="css/htmlmobile.6118bab.css" rel="stylesheet">
+    <link href="css/config.css" rel="stylesheet">
+    <link href="css/print.css" rel="stylesheet"> -->
+</head>
+<!-- division div tag 웹페이지의 논리적 구분을 정의하기 위해서 사용하며 웹 사이트의 레이아웃을 정의하기 위해 보통 사용한다.
+우리 제품의 스킨에서는 wrap이라는 div 태그를 사용하여 레이아웃을 구분해 놓았다. -->
+<body>
+    <div id="header-area", class="header-area">
+        <button id="annotation-toggle", class="annotation-toggle">annotation mode</button>
+    </div>
+    <div id="annotation-layer", class="annotation-layer">
+    </div>
+    <div id="marker-layer", class="marker-layer">
+        <svg id="tmp-marker-svg", class="tmp-marker-svg"></svg>
+    </div>
+</body>
+
+</html>
