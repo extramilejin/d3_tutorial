@@ -1,5 +1,24 @@
 @charset "UTF-8";
 
+/// Block Element
+/// @access public
+/// @param {String} $element - Element's name
+@mixin element($element) {
+    &__#{$element} {
+        @content;
+    }
+}
+
+/// Block Modifier
+/// @access public
+/// @param {String} $modifier - Modifier's name
+@mixin modifier($modifier) {
+    &--#{$modifier} {
+        @content;
+    }
+}
+
+
 html,
 body {
     font-family: "Noto Sans", Helvetica, AppleSDGothicNeo, Dotum, sans-serif;
@@ -14,16 +33,42 @@ body {
     background-color: greenyellow;
 }
 
-.annotation-toggle {
+.annotation-toggle .annotation-textbox-btn {
     font-size: 15pt;
 }
 
 .annotation-layer {
     position: absolute;
-    width: 1000px;
-    height: 1000px;
-    background-color: aqua;
-    z-index: 17;
+    width: 1500px;
+    height: 1500px;
+    background-color: transparent;
+    z-index: 15;
+    .active {
+        border: 2px dashed #FF9900;
+        margin: -2px 0 0 -2px;
+    }
+    @include modifier('pointer') {
+        pointer-events: stroke;
+    }
+}
+
+.annotation-textbox__content {
+    margin: 3px;
+    border: 0;
+    background-color: transparent;
+    resize: none;
+    overflow: auto;
+    font-size: 13px;
+    color: black;
+    border-radius: 0;
+    font-family: "Noto Sans", Helvetica, AppleSDGothicNeo, Dotum, sans-serif;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+.marker-svg {
+    border: none;
+    position: absolute;
 }
 
 .marker-layer {
@@ -31,7 +76,7 @@ body {
     width: 1500px;
     height: 1500px;
     background-color: orange;
-    z-index: 15;
+    z-index: 0;
 }
 
 .tmp-marker-svg {
@@ -42,5 +87,5 @@ body {
     height: 1500px;
     z-index: 16;
     touch-action: none; // 어노테이션모드에서 스크롤을 막기 위하여 설정
-  }
+}
 
