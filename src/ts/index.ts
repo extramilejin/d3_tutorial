@@ -1,5 +1,20 @@
 import * as $ from 'jquery'
 import * as d3 from 'd3'
+import { Observable } from './Observable';
+import { Util } from "./Util";
+
+// ----------------------------- eventObserver -------------------------------
+const eventObserver = {
+    'selectAnnotation': new Observable(),
+    'unSelectAnnotation': new Observable(),
+    'dragAnnotStart': new Observable(),
+    'dragAnnotEnd': new Observable(),
+    'newTextBox': new Observable(),
+    'deleteMarker': new Observable(),
+    'saveAnnotCb': new Observable(),
+    'applyAnnot': new Observable()
+};
+
 // ----------------------------- checkMouseDown -------------------------------
 let mousedown: boolean = false;
 
@@ -15,6 +30,11 @@ let isDrawingMode: boolean = false;
 let isDrawingFillShape: boolean = false;
 let isAnnotationMode: boolean = false;
 
+// ------------------------------- indexing --------------------------------------
+let rectIdx = 0;
+let markerId = 0; 
+const VIEWBOX_RANGE = 5;
+
 // ------------------------------- layer elements --------------------------------
 const annotationLayer = document.getElementById("annotation-layer");
 const markerLayer = document.getElementById("marker-layer");
@@ -24,18 +44,10 @@ let svgElmSelection = d3.select(svgElm);
 let newSvg: d3.Selection<SVGElement, unknown, HTMLElement, any> = null;
 
 
-let eventObserver = null;
 let markerLayerSelection = d3.select(markerLayer);
 let annotLayerSelection = d3.select(annotationLayer);
 
-
-
-// ------------------------------- indexing --------------------------------------
-let rectIdx = 0;
-let markerId = 0; 
-const VIEWBOX_RANGE = 5;
 // -------------------------------- button events -------------------------------
-
 let annotationToggleBtn = document.getElementById("annotation-toggle")
 let textboxToggleBtn = document.getElementById("annotation-textbox-btn");
 
@@ -62,7 +74,11 @@ function gotoAnnotMode() {
     annotationToggleBtn.innerText = "annotation off";
     isAnnotationMode = true;
     markerEventBind(svgElmSelection);
-    d3.select(textboxToggleBtn).style('disabled','false');0
+    d3.select(textboxToggleBtn).style('disabled','false');
+    // const textboxes: d3.Selection<SVGSVGElement,unknown,HTMLElement,any> = d3.selectAll('textbox');
+    // textboxes.on('click', function() {
+    //     markerActiveEvent(textboxes ,this);
+    // })
     // annotation 모드로 갈 시 selectmode가 defualt
     const markerScaleElms = Array.prototype.slice.call(document.getElementsByClassName('annotation-layer'));
     for(const markerScaleElm of markerScaleElms) {
@@ -79,6 +95,8 @@ function outAnnotMode() {
     isAnnotationMode = false;
     markerEventClear(svgElmSelection);
     d3.select(textboxToggleBtn).style('disabled','true');
+    // const textboxes: d3.Selection<SVGSVGElement,unknown,HTMLElement,any> = d3.selectAll('textbox');
+    // textboxes.on('click', null); 
 
     const markerScaleElms = Array.prototype.slice.call(document.getElementsByClassName('annotation-layer'));
     for(const markerScaleElm of markerScaleElms) {
@@ -106,6 +124,108 @@ function outDrawingMode() {
 
 // -----------------------------Drawing.ts-----------------------------------
 // -----------------------------marker events--------------------------------
+const getAnnotArea = (): {left: ()=>number, right: ()=>number, top: ()=>number, bottom: ()=>number} => {
+    const left = () => {return 0};
+    const top = () => {return 0};
+    const bottom = () => {return 1500};
+    const right = () => {return 1500};
+    return {
+        left: left,
+        right: right,
+        top: top,
+        bottom: bottom
+    };
+};
+
+export const annotPos = (w: number, h: number, l: number, t: number, lL: number, lR: number, lT: number, lB: number):
+	{
+		getLeft: ()=>number,
+		getTop: ()=>number,
+		setPos: (transX:number, transY:number)=>void,
+		getMoveX: ()=>number,
+		getMoveY: ()=>number,
+		isMove: ()=>boolean
+	} => {
+	const width = w;
+	const height = h;
+	const limitLeft = lL;
+	const limitRight = lR - width;
+	const limitTop = lT;
+	const limitBottom = lB - height;
+	const firstLeft = l;
+	const firstTop = t;
+	let left = l;
+	let top = t;
+	const getLeft = () => {
+		return Util.rangeVal(left, limitLeft, limitRight);
+	};
+	const getTop = () => {
+		return Util.rangeVal(top, limitTop, limitBottom);
+	};
+	const getMoveX = () => {return firstLeft - getLeft();}
+	const getMoveY = () => {return firstTop - getTop();}
+	return {
+		getLeft: getLeft,
+		getTop: getTop,
+		setPos: (transX: number, transY: number) => {
+			left -= transX;
+			top -= transY;
+		},
+		getMoveX: getMoveX,
+		getMoveY: getMoveY,
+		isMove: () => {
+			return (Math.abs(getMoveX()) > 5 || Math.abs(getMoveY()) > 5 );
+		}
+	};
+}
+
+// function markerDragEventBind(svgSelection: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>, svgElement: SVGSVGElement): void {
+//     let transX = 0, transY = 0, startX = 0, startY = 0;
+
+//     // annot area => svg viewbox?
+//     // annot pos => ?
+
+//     const {left, right, top, bottom} = getAnnotArea();
+//     let markPos = annotPos(parseFloat(annotInfo.w), parseFloat(annotInfo.h), parseFloat(annotInfo.l), 
+//                             parseFloat(annotInfo.t), left(), right(), top(), bottom());
+//     svgSelection.call(d3.drag()
+//                     .on("start", () => {
+//                         startX = d3.event.x;
+//                         startY = d3.event.y;
+//                         markPos = annotPos(parseFloat(annotInfo.w), parseFloat(annotInfo.h), parseFloat(annotInfo.l), 
+//                                             parseFloat(annotInfo.t), left(), right()/ratio(), top(), bottom()/ratio());
+//                     })
+//                     .on("drag", () => {
+//                         transX = startX - d3.event.x;
+//                         transY = startY - d3.event.y;
+//                         startX = d3.event.x;
+//                         startY = d3.event.y;
+//                         markPos.setPos((transX), (transY));
+//                         // 실제로 움직이는 것은 viewbox이기 때문에 마커와 viewbox와의 거리만큼 빼야함.
+//                         transX && svgSelection.style("left", (markPos.getLeft()-VIEWBOX_RANGE) + 'px');
+//                         transY && svgSelection.style("top", (markPos.getTop()-VIEWBOX_RANGE) + 'px');
+//                     })
+//                     .on("end", () => {
+//                         if(markPos.isMove()) {
+//                             const attr = {
+//                                 'left' : markPos.getLeft().toFixed(2),
+//                                 'top' : markPos.getTop().toFixed(2),
+//                                 'path' : this.getDrawingTool(getAnnotType(annotInfo)).moveMarker(annotInfo, markPos.getMoveX(), markPos.getMoveY()),
+//                             };
+//                             // 마커 이동 업데이트
+//                         }
+//                         eventObserver.dragAnnotEnd.notify({page: pageOrSheetIdx, annotId: annotId, showPopup: true, ratio: ratio()});
+//                     })
+//             );
+// }
+
+function parseMarkerId(id: string): Number {
+    if(!id) {
+        return;
+    }
+    const splitedArr: Array<string> = id.split("-");
+    return Number(splitedArr[1]);
+}
 
 let activeMarker = null;
 
@@ -115,9 +235,9 @@ function markerActiveEvent(svgSelection: d3.Selection<SVGSVGElement, unknown, HT
     activeMarker = targetEL;
     svgSelection.classed('active', true)
     svgSelection.on('mouseover', function() {this.style.cursor='move'});
-    if (isAnnotationMode) {
-        
-    }
+    // if (isAnnotationMode) {
+    //     markerDragEventBind(svgSelection, targetEL);
+    // }
 }
 
 function markerInactiveEvent(): void {
@@ -133,61 +253,6 @@ function markerInactiveEvent(): void {
     activeMarker = null;
 }
 
-// function markerDragEventBind(svgSelection: d3.Selection<SVGSVGElement, unknown, HTMLElement, any>, svgElement: SVGSVGElement): void {
-//     let transX = 0, transY = 0, startX = 0, startY = 0;
-//     const eventObserver = this.eventObserver;
-//     const elemId = svgElement.id;
-//     // const {annotId, pageOrSheetIdx} = Marker.parseMarkerId(elemId);
-//     // const annotInfo:AnnotBaseInfo = this.marker.getAnnotationInfo(pageOrSheetIdx, annotId).annot;
-//     // const ratio = () => {
-//     //     const ratio = PageRatio.instance.getPageOrCurrentSheetRatio(pageOrSheetIdx, isCell);
-//     //     return (ratio * Annotation.DPI_RATIO);
-//     // }
-//     const {left, right, top, bottom} = getAnnotArea(true, pageOrSheetIdx, isCell);
-//     let markPos = annotPos(parseFloat(annotInfo.w), parseFloat(annotInfo.h), parseFloat(annotInfo.l), 
-//                             parseFloat(annotInfo.t), left(), right()/ratio(), top(), bottom()/ratio());
-//     svgSelection.call(d3.drag()
-//                     .on("start", () => {
-//                         const annotInfo = this.marker.getAnnotationInfo(pageOrSheetIdx, annotId).annot;
-//                         startX = d3.event.x;
-//                         startY = d3.event.y;
-//                         markPos = annotPos(parseFloat(annotInfo.w), parseFloat(annotInfo.h), parseFloat(annotInfo.l), 
-//                                             parseFloat(annotInfo.t), left(), right()/ratio(), top(), bottom()/ratio());
-//                         eventObserver.dragAnnotStart.notify({elemId});
-//                     })
-//                     .on("drag", () => {
-//                         transX = startX - d3.event.x;
-//                         transY = startY - d3.event.y;
-//                         startX = d3.event.x;
-//                         startY = d3.event.y;
-//                         markPos.setPos((transX / ratio()), (transY / ratio()));
-//                         // 실제로 움직이는 것은 viewbox이기 때문에 마커와 viewbox와의 거리만큼 빼야함.
-//                         transX && svgSelection.style("left", (markPos.getLeft()-DrawingTool.VIEWBOX_RANGE) + 'px');
-//                         transY && svgSelection.style("top", (markPos.getTop()-DrawingTool.VIEWBOX_RANGE) + 'px');
-//                     })
-//                     .on("end", () => {
-//                         if(markPos.isMove()) {
-//                             const annotInfo = this.marker.getAnnotationInfo(pageOrSheetIdx, annotId).annot;
-//                             const attr = {
-//                                 'left' : markPos.getLeft().toFixed(2),
-//                                 'top' : markPos.getTop().toFixed(2),
-//                                 'path' : this.getDrawingTool(getAnnotType(annotInfo)).moveMarker(annotInfo, markPos.getMoveX(), markPos.getMoveY()),
-//                             };
-//                             // 마커 이동 업데이트
-//                             this.eventObserver.modifyMarkerAttr.notify({elemId, attr});
-//                         }
-//                         eventObserver.dragAnnotEnd.notify({page: pageOrSheetIdx, annotId: annotId, showPopup: true, ratio: ratio()});
-//                     })
-//             );
-// }
-
-
-// ----------------------------------------------------------------
-
-
-// svgElmSelection.on('mousedown', function() {
-//     markerStart(svgElmSelection, this);
-// })
 
 
 
@@ -244,6 +309,7 @@ function addTextboxElmToAnnotLayer() {
     const textboxDiv = document.createElement('div');
     d3.select(textboxDiv)
     .attr('id', `textbox-${rectIdx}`)
+    .attr('class', 'textbox')
     .style('position', 'absolute')
     .style('left', `${left}px`)
     .style('top', `${top}px`);
@@ -276,7 +342,10 @@ function addTextboxElmToAnnotLayer() {
     .style('height', `${parseInt(height) - 5}px`)
     .style('background', 'none')
     .style('resize', `none`)
-    .style('border','none');
+    .style('border','none')
+    .style('overflow', 'hidden')
+    .style('outline', 'none')
+    .attr('autofocus', 'true');
     
     textboxDiv.appendChild(textarea);
     annotationLayer.appendChild(textboxDiv);
@@ -286,6 +355,7 @@ function markerEnd(svgSelection: d3.Selection<SVGSVGElement, unknown, HTMLElemen
     svgSelection.on('mousemove', null);
     isDrawingFillShape = false;
     addTextboxElmToAnnotLayer();
+    outDrawingMode();
     rectIdx++;
 }
 
